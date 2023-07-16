@@ -6,89 +6,100 @@ import matplotlib.pyplot as plt
 
 
 class SimpleStock:
-    """Simulates a simple stock that can be traded.
+    """Simulates a stock (share of a company) that can be traded.
     The single trader is a price taker (his transactions have no effects
     on the stock price). The only exogenous factor that affects the
-    stock price is the firm's performance, which can take 3 levels.
-    Firm performance in the current period affects next-period prices.
-    The firm's performance over time is governed by a transition
-    matrix. The stock's observable state comprises the trader's position
-    in the stock, the firm performance, and price, which is indirectly 
-    defined by the last-period price and growth rates.
+    stock price is the stock's indicator, whose value in the current period
+    predicts the growth of the stock's next-period price. The indicator's value 
+    over time is governed by a transition matrix. The stock's observable state comprises 
+    the stock's current price, the stock's indicator value, and the trader's
+    position in the stock (how many stocks owned).
+
+    Attributes:
+        indicator_values (list): 
+            discrete values that the stock's indicator can take.
+        transition_matrix (pd.DataFrame): contains the probabilities of transitioning
+            between one indicator value to another.
+        stock_growths (list):
+            discrete values that the next-period stock price can change by.
+        growth_probabilities (pd.DataFrame):
+            each row is the conditional distribution of stock price growth
+            given the current indicator value.
+        price_bounds (list):
+            the lower and upper bounds of the discrete stock price (to limit
+            the state space size for tractability).
+        position_bounds (list):
+            the lower and upper bounds of the trader's position in the stock price 
+            (to limit the state space size for tractability). Position = number of
+            stocks owned. Negative position means shares are shorted.
+        position_increment (int):
+            when stocks are longed/shorted, it must be at this increment.
+        states (list[tuple]):
+            all observable states
+        transactions (list):
+            the action space of the trader; how many shares to long/short
+            at each time step. transactions = 0 means 'hold' current position.
+            If current position is -1 (one stock shorted), a transaction of 1
+            would close out the short position instead of creating a new long position
+            (i.e. no hedging with complicated positions).
+        transaction_cost (float):
+            cost of trading per share.
     """
-    # ========== STATES ==========
-    firm_performance = [-2,-1,0,1,2]
-    performance_transition_matrix = pd.DataFrame(
+
+    indicator_values = [-2, -1, 0, 1, 2]
+
+    transition_matrix = pd.DataFrame(
         [[0.40, 0.60, 0.00, 0.00, 0.00],
          [0.00, 0.40, 0.60, 0.00, 0.00],
          [0.00, 0.00, 0.10, 0.90, 0.00],
          [0.00, 0.00, 0.00, 0.40, 0.60],
          [0.60, 0.00, 0.00, 0.00, 0.40]], 
-        index=firm_performance, columns=firm_performance)
+        index=indicator_values, columns=indicator_values)
     
-    # stock prices can change by +/- 1 or 0 per period
-    # probabilities of change are conditional on current firm performance
-    # e.g. next period prices will very likely be lower if firm under-performed this period
     stock_growths = [-2, -1, 0, 1, 2]
+
     growth_probabilities = pd.DataFrame(
         [[1.00, 0.00, 0.00, 0.00, 0.00],
          [0.00, 0.90, 0.10, 0.00, 0.00],
          [0.00, 0.00, 0.90, 0.10, 0.00],
          [0.00, 0.00, 0.00, 0.90, 0.10],
-         [0.00, 0.00, 0.00, 0.00, 1.00]], index=firm_performance, columns=stock_growths)
+         [0.00, 0.00, 0.00, 0.00, 1.00]], 
+         index=indicator_values, columns=indicator_values)
+
+    price_bounds = [30, 70]
+    position_bounds = [-5, 5]
+    position_increment = 1
+
+    states = list(it.product(indicator_values, 
+                        range(price_bounds[0], price_bounds[1]+1, 1),
+                        range(position_bounds[0], position_bounds[1]+1, position_increment)))
     
-    # prices are discrete
-    # controls the number of states by limiting prices
-    price_bounds = [40, 60]
-    
-    # position = how many shares owned by the trader
-    # trader cannot own negative shares and cannot own more than 10 shares
-    position_bounds = [0, 10]
-    # tracks the most recent purchase price (for capital gains tax calculation)
-    last_buyin_price = None
-    
-    # unit of change in position allowed 
-    # i.e. if stocks are bought or sold, must be at increments of x shares
-    increment = 2
-    
-    # generate all observable states: performance x price x position
-    states = list(it.product(firm_performance, 
-                        range(price_bounds[0], price_bounds[1]+1),
-                        range(position_bounds[0], position_bounds[1]+1, increment)))
-    
-    # ========== ACTIONS ==========
-    # investor can buy or sell x shares at a time, or hold (buy 0)
-    # action space = [-x, -(x-1), ..., 0, ..., x-1, x]
-    # e.g. if transactions = -x, then sell x shares
-    transactions = list(range(-position_bounds[1], position_bounds[1]+1, increment))
-    
-    # fixed transaction cost per share
+    transactions = list(range(-position_bounds[1], position_bounds[1]+1, position_increment))
+
     transaction_cost = 0
     
-    # capital gains tax: fixed percentage of capital gain deducted
-    capital_gains_tax = 0.2
     
-    
-    def __init__(self, initial_performance=0, initial_price=50, initial_position=0):
+    def __init__(self, initial_indicator=0, initial_price=50, initial_position=0):
         """
         """
-        self.performance = initial_performance
+        self.indicator_history = [initial_indicator]
+        self.growth_history = []
         self.price = initial_price
+        self.price_history = [self.price]
         self.position = initial_position
-        self.growth = None
-        # tracks transaction and price histories
-        self.performance_history = []
+        self.position_history = [initial_position]
         self.transaction_history = []
-        self.payoff_history = []
-        self.price_history = [initial_price]
-        self.total_payoff = 0
+        self.reward_history = []
     
+
     @property
     def price(self):
         return self.__price
     
     @price.setter
     def price(self, value):
+        """Set price to boundary value if exceeded.
+        """
         a, b = self.price_bounds
         if value > b:
             self.__price = b
@@ -98,21 +109,19 @@ class SimpleStock:
             self.__price = value
             
     
-    def payoff_calculator(self, transaction):
-        """Payoffs are based on change in value of total assets.
-        Buying has a payoff of 0 - transaction costs, since cash is
-        converted to the value of stock minus fees. Holding while stock
-        appreciates/depreciates has a payoff of the change in stock value
-        between two consecutive periods. Selling has a payoff of the final
-        stock value minus transaction fees and taxes.
+    def reward_calculator(self, transaction):
+        """Calculates reward for the trader for making a transaction
+        given a current state of the stock. Buying incurs a cost
+        (negative reward) of number of shares bought x current share price.
+        transaction (int): number of stocks longed/shorted
         """
-        payoff = 0
-        
-        # if buying
-        if transaction > 0:
-            payoff -= transaction * (self.price + self.transaction_cost)
-        # if selling
-        elif transaction < 0:
+        reward = 0
+
+        # net long position
+        if transaction > 0 and self.position >= 0:
+            reward -= transaction * (self.price + self.transaction_cost)
+        # net short position
+        elif transaction < 0 and self.position < 0:
             capital_gains = abs(transaction) * (self.price - self.last_buyin_price)
             payoff -= transaction * self.price
             
@@ -140,6 +149,25 @@ class SimpleStock:
         else:
             return True
     
+
+    def close_out(self):
+        """Terminates all future trading and close out on current position.
+        """
+        pass
+
+    
+    def simulate_trading_day(self, Ndays=1):
+        """Simulate a number of trading days passing.
+        Ndays (int): number of trading days (>= 1)
+        """
+        pass
+
+    
+    def calculate_financial_gains(self):
+        """Calculate net financial gains (capital gains minus transaction costs).
+        """
+        pass
+
     
     def investment_decision(self, transaction):
         """
