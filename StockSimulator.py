@@ -30,20 +30,24 @@ class SimpleStock:
             the state space size for tractability).
         position_bounds (list):
             the lower and upper bounds of the trader's position in the stock price 
-            (to limit the state space size for tractability). Position = number of
-            stocks owned. Negative position means shares are shorted.
-        position_increment (int):
-            when stocks are longed/shorted, it must be at this increment.
+            (to limit the state space size for tractability). Position = net number of
+            stocks longed / shorted. Negative position means more shares are shorted
+            than longed.
         states (list[tuple]):
-            all observable states
+            all observable states, unique combinations of indicator values
+            x prices x positions.
         transactions (list):
             the action space of the trader; how many shares to long/short
             at each time step. transactions = 0 means 'hold' current position.
             If current position is -1 (one stock shorted), a transaction of 1
             would close out the short position instead of creating a new long position
-            (i.e. no hedging with complicated positions).
+            (i.e. no simultaneous short and long positions).
         transaction_cost (float):
             cost of trading per share.
+        portfolio (list[tuple]):
+            Each tuple tracks all longs or shorts made, and the price they were made at
+            (for capital gain computation). The first value (-1 or +1) indicates a
+            short or long transaction made, and the second value is the price.
     """
 
     indicator_values = [-2, -1, 0, 1, 2]
@@ -68,28 +72,30 @@ class SimpleStock:
 
     price_bounds = [30, 70]
     position_bounds = [-5, 5]
-    position_increment = 1
 
     states = list(it.product(indicator_values, 
-                        range(price_bounds[0], price_bounds[1]+1, 1),
-                        range(position_bounds[0], position_bounds[1]+1, position_increment)))
+                        range(price_bounds[0], price_bounds[1]+1),
+                        range(position_bounds[0], position_bounds[1]+1)))
     
     transactions = list(range(-position_bounds[1], position_bounds[1]+1, position_increment))
 
     transaction_cost = 0
     
     
-    def __init__(self, initial_indicator=0, initial_price=50, initial_position=0):
+    def __init__(self, initial_indicator=0, initial_price=50):
+        """Instantiates a SimpleStock.
+        Args:
+            initial_indicator (int): starting value of the stock's indicator
+            initial_price (int): starting value of the stock's price
         """
-        """
+        self.portfolio = []
         self.indicator_history = [initial_indicator]
         self.growth_history = []
         self.price = initial_price
         self.price_history = [self.price]
-        self.position = initial_position
-        self.position_history = [initial_position]
         self.transaction_history = []
         self.reward_history = []
+        self.capital_gains_history = []
     
 
     @property
@@ -107,101 +113,105 @@ class SimpleStock:
             self.__price = a
         else:
             self.__price = value
-            
-    
-    def reward_calculator(self, transaction):
-        """Calculates reward for the trader for making a transaction
-        given a current state of the stock. Buying incurs a cost
-        (negative reward) of number of shares bought x current share price.
-        transaction (int): number of stocks longed/shorted
-        """
-        reward = 0
 
-        # net long position
-        if transaction > 0 and self.position >= 0:
-            reward -= transaction * (self.price + self.transaction_cost)
-        # net short position
-        elif transaction < 0 and self.position < 0:
-            capital_gains = abs(transaction) * (self.price - self.last_buyin_price)
-            payoff -= transaction * self.price
-            
-            # apply capital gains tax
-            taxes = (capital_gains > 0) * self.capital_gains_tax * capital_gains
-            payoff -= taxes
-                
-        # if holding
-        else:
-            payoff += self.position * (self.price - self.price_history[-1])
-                
-        return payoff
-    
-    
-    def is_valid_transaction(self, transaction):
-        """Allows selling iff a share is already owned.
-        Allows buying iff ownership limit is not reached.
+
+    def _compute_net_position(self):
         """
-        if self.position + transaction > self.position_bounds[1]:
-#             print(f"Cannot own more than {self.position_bounds[1]} stocks.")
+        """
+        position = 0
+
+        for transaction in self.portfolio:
+            position += transaction[0]
+
+        return position
+
+    
+    def _is_valid_transaction(self, transaction):
+        """Checks if position bounds are violated.
+        """
+        position = self._compute_net_position()
+
+        if position + transaction > self.position_bounds[1]:
             return False
-        elif self.position + transaction < self.position_bounds[0]:
-#             print(f"Cannot own less than {self.position_bounds[0]} stocks.")
+        elif position + transaction < self.position_bounds[0]:
             return False
         else:
             return True
-    
 
-    def close_out(self):
-        """Terminates all future trading and close out on current position.
+
+    def _transact_hold(self):
+        """Computes the transaction 'hold'.
         """
         pass
 
     
-    def simulate_trading_day(self, Ndays=1):
+    def _transact_short(self):
+        """Computes the transaction 'short'.
+        """
+        pass
+
+    
+    def _transact_long(self):
+        """Computes the transaction 'long'.
+        """
+        pass
+
+    
+    def _process_transaction(self, transaction):
+        """Apply changes to portfolio and compute rewards 
+        and capital gains resulting from making the transaction 
+        given the current state. If a transaction is invalid
+        (e.g. violates the position bounds), the a 'hold' is
+        transacted.
+        Args:
+            transaction: the transaction initiated.
+        Returns:
+            transaction: the actual transaction made.
+        """
+        if self._is_valid_transaction(transaction):
+            if transaction > 0:
+                reward = self._transact_long()
+            elif transaction < 0:
+                reward = self._transact_short()
+            else:
+                reward = self._transact_hold()
+            return transaction, reward
+
+        else:
+            reward = self._transact_hold()
+            # actual transaction is a 'hold'
+            return 0, reward
+
+
+    def _close_out(self):
+        """Terminates all future trading and close out on current position
+        by liquidating portfolio.
+        """
+        pass
+
+    
+    def _transition_states(self):
+        """Computes next-period indicator values and stock price.
+        """
+        pass
+
+    
+    def simulate_trading_day(self, Ndays=1, strategy=None):
         """Simulate a number of trading days passing.
-        Ndays (int): number of trading days (>= 1)
+        Args:
+            Ndays (int): number of trading days (>= 1)
+            strategy (list[int]): 
         """
-        pass
+        if strategy is None:
+            print("A strategy for making transactions must be provided.")
+        elif len(strategy) != Ndays:
+            print("A strategy must be provided for each simulated trading day.")
+        else:
+            print(f"Simulating {Ndays} trading days...")
 
-    
-    def calculate_financial_gains(self):
-        """Calculate net financial gains (capital gains minus transaction costs).
-        """
-        pass
+        for day in range(Ndays):
+            print("==========", "Simulating day", day, "==========")
 
-    
-    def investment_decision(self, transaction):
-        """
-        """
-        # ========== CALCULATE PAYOFFS ==========
-        if not self.is_valid_transaction(transaction):
-            # if action is not valid, 'do nothing'
-            transaction = 0
-        self.transaction_history.append(transaction)
-        
-        # records most recent buy-in price
-        if transaction > 0:
-            self.last_buyin_price = self.price
-            
-        payoff = self.payoff_calculator(transaction)
-        self.payoff_history.append(payoff)
-        self.total_payoff += payoff
-        
-        # ========== STATE TRANSITION ==========
-        self.position += transaction
-        
-        # select next-period price growth based on current performance
-        probs = self.growth_probabilities.loc[self.performance, :].values
-        self.growth = np.random.choice(self.stock_growths, p=probs)
-        # calculate next-period price
-        self.price_history.append(self.price)
-        self.price = self.price + int(self.growth)
-        
-        # select next-period performance
-        self.performance_history.append(self.performance)
-        probs = self.performance_transition_matrix.loc[self.performance, :].values
-        self.performance = np.random.choice(self.firm_performance, p=probs)
-        
-        state = (self.performance, self.price, self.position)
-        
-        return state, payoff
-    
+            actual_transaction, reward = self._process_transaction(strategy[day])
+
+            next_state = self._transition_states()
