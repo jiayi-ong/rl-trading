@@ -89,6 +89,7 @@ class SimpleStock:
             initial_price (int): starting value of the stock's price
         """
         self.portfolio = []
+        self.position = 0
         self.indicator_history = [initial_indicator]
         self.growth_history = []
         self.price = initial_price
@@ -116,43 +117,68 @@ class SimpleStock:
 
 
     def _compute_net_position(self):
-        """
+        """Computes the net position of the current
+        portfolio. E.g. if there are three shorted stocks,
+        the net position would be -3.
         """
         position = 0
 
         for transaction in self.portfolio:
             position += transaction[0]
 
-        return position
+        self.position = position
 
     
     def _is_valid_transaction(self, transaction):
         """Checks if position bounds are violated.
+        Args:
+            transaction (int):
+        Returns:
+            (bool): whether the transaction is valid
         """
-        position = self._compute_net_position()
-
-        if position + transaction > self.position_bounds[1]:
+        if self.position + transaction > self.position_bounds[1]:
             return False
-        elif position + transaction < self.position_bounds[0]:
+        elif self.position + transaction < self.position_bounds[0]:
             return False
         else:
             return True
 
+    
+    def _transact_short(self, N):
+        """Computes the transaction 'short' N times and
+        returns the reward given the current state.
+        """
+        if self.position <= 0:
+            for _ in range(N):
+                self.portfolio.append((-1, self.price))
+            
+            return self.price * N
+
+        # if there is a net long position, longed shares
+        # would be sold in ascending order of price bought (sell cheapest first)
+        else:
+            pass
+
+    
+    def _transact_long(self, N):
+        """Computes the transaction 'long' N times and
+        returns the reward given the current state.
+        """
+        if self.position >= 0:
+            for _ in range(N):
+                self.portfolio.append((1, self.price))
+
+            return -self.price * N
+
+        # if there is a net short position, shorted shares
+        # would be closed in descending order of price bought (close most expensive first)
+        else:
+            pass
+
 
     def _transact_hold(self):
-        """Computes the transaction 'hold'.
-        """
-        pass
-
-    
-    def _transact_short(self):
-        """Computes the transaction 'short'.
-        """
-        pass
-
-    
-    def _transact_long(self):
-        """Computes the transaction 'long'.
+        """Computes the transaction 'hold' and
+        returns the reward given the current state.
         """
         pass
 
@@ -166,21 +192,26 @@ class SimpleStock:
         Args:
             transaction: the transaction initiated.
         Returns:
-            transaction: the actual transaction made.
+            actual_transaction: the actual transaction made.
         """
         if self._is_valid_transaction(transaction):
+            actual_transaction = transaction
             if transaction > 0:
-                reward = self._transact_long()
+                reward = self._transact_long(N=abs(transaction))
             elif transaction < 0:
-                reward = self._transact_short()
+                reward = self._transact_short(N=abs(transaction))
             else:
                 reward = self._transact_hold()
-            return transaction, reward
 
         else:
-            reward = self._transact_hold()
             # actual transaction is a 'hold'
-            return 0, reward
+            actual_transaction = 0
+            reward = self._transact_hold()
+
+        # update position
+        self._compute_net_position()
+
+        return actual_transaction, reward
 
 
     def _close_out(self):
