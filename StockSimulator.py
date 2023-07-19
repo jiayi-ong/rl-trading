@@ -68,7 +68,7 @@ class SimpleStock:
          [0.00, 0.00, 0.90, 0.10, 0.00],
          [0.00, 0.00, 0.00, 0.90, 0.10],
          [0.00, 0.00, 0.00, 0.00, 1.00]], 
-         index=indicator_values, columns=indicator_values)
+         index=indicator_values, columns=stock_growths)
 
     price_bounds = [30, 70]
     position_bounds = [-5, 5]
@@ -77,7 +77,7 @@ class SimpleStock:
                         range(price_bounds[0], price_bounds[1]+1),
                         range(position_bounds[0], position_bounds[1]+1)))
     
-    transactions = list(range(-position_bounds[1], position_bounds[1]+1, position_increment))
+    transactions = list(range(-position_bounds[1], position_bounds[1]+1))
 
     transaction_cost = 0
     
@@ -148,41 +148,63 @@ class SimpleStock:
         """Computes the transaction 'short' N times and
         returns the reward given the current state.
         """
-        if self.position <= 0:
-            for _ in range(N):
-                self.portfolio.append((-1, self.price))
-            
-            return self.price * N
+        reward = 0
+        self.portfolio.sort(key=lambda x: (-x[0], x[1]), reverse=True)
 
-        # if there is a net long position, longed shares
-        # would be sold in ascending order of price bought (sell cheapest first)
-        else:
-            pass
+        for _ in range(N):
+
+            if self.position <= 0:
+                self.portfolio.append((-1, self.price))
+                reward += self.price
+
+            # if there is a net long position, longed shares
+            # would be sold in ascending order of price bought (sell cheapest first)
+            else:
+                shorted = self.portfolio.pop()
+                reward += self.price - shorted[1]
+
+        return reward
 
     
     def _transact_long(self, N):
         """Computes the transaction 'long' N times and
         returns the reward given the current state.
         """
-        if self.position >= 0:
-            for _ in range(N):
+        reward = 0
+        self.portfolio.sort(key=lambda x: (-x[0], x[1]))
+
+        for _ in range(N):
+
+            if self.position >= 0:
                 self.portfolio.append((1, self.price))
+                reward -= self.price
 
-            return -self.price * N
+            # if there is a net short position, shorted shares
+            # would be closed in descending order of price shorted (close most expensive first)
+            else:
+                closed = self.portfolio.pop()
+                reward += closed[1] - self.price
 
-        # if there is a net short position, shorted shares
-        # would be closed in descending order of price bought (close most expensive first)
-        else:
-            pass
+        return reward
 
 
     def _transact_hold(self):
         """Computes the transaction 'hold' and
         returns the reward given the current state.
         """
-        pass
+        # with a net long position, reward increases if price appreciates
+        if self.position > 0:
+            return self.price - self.price_history[-1]
 
-    
+        # with a net short position, reward increases if price depreciates
+        elif self.position < 0:
+            return self.price_history[-1] - self.price
+        
+        # holding an empty portfolio has no reward
+        else:
+            return 0
+
+
     def _process_transaction(self, transaction):
         """Apply changes to portfolio and compute rewards 
         and capital gains resulting from making the transaction 
@@ -211,12 +233,14 @@ class SimpleStock:
         # update position
         self._compute_net_position()
 
+        # record transaction
+        self.transaction_history.append(actual_transaction)
+
         return actual_transaction, reward
 
 
     def _close_out(self):
-        """Terminates all future trading and close out on current position
-        by liquidating portfolio.
+        """Close out on current position by liquidating portfolio.
         """
         pass
 
@@ -224,7 +248,21 @@ class SimpleStock:
     def _transition_states(self):
         """Computes next-period indicator values and stock price.
         """
-        pass
+        current_indicator = self.indicator_history[-1]
+
+        # determine next-period price
+        growth_probs = self.growth_probabilities.loc[current_indicator]
+        price_growth = np.random.choice(self.stock_growths, p=growth_probs)
+        self.growth_history.append(price_growth)
+        self.price_history.append(self.price)
+        self.price += price_growth
+
+        # determine next-period indicator
+        change_probs = self.transition_matrix.loc[current_indicator]
+        next_indicator = np.random.choice(self.indicator_values, p=change_probs)
+        self.indicator_history.append(next_indicator)
+
+        return (next_indicator, self.price, self.position)
 
     
     def simulate_trading_day(self, Ndays=1, strategy=None):
@@ -234,15 +272,22 @@ class SimpleStock:
             strategy (list[int]): 
         """
         if strategy is None:
-            print("A strategy for making transactions must be provided.")
+            print("No trading strategy provided, will do nothing.")
+            strategy = [0] * Ndays
         elif len(strategy) != Ndays:
-            print("A strategy must be provided for each simulated trading day.")
+            print("A trading strategy must be provided for each simulated trading day.")
         else:
             print(f"Simulating {Ndays} trading days...")
 
         for day in range(Ndays):
-            print("==========", "Simulating day", day, "==========")
+            print("==========", "Simulating day", day+1, "==========")
+            print("Indicator:", self.indicator_history[-1],
+                  "| Price:", self.price,
+                  "| Position:", self.position)
 
             actual_transaction, reward = self._process_transaction(strategy[day])
+            print("Transaction:", actual_transaction, "| Reward:", reward)
+            print("Portfolio:", self.portfolio)
 
             next_state = self._transition_states()
+            print("Growth:", self.growth_history[-1])
