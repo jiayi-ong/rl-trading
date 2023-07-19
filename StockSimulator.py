@@ -45,9 +45,9 @@ class SimpleStock:
         transaction_cost (float):
             cost of trading per share.
         portfolio (list[tuple]):
-            Each tuple tracks all longs or shorts made, and the price they were made at
-            (for capital gain computation). The first value (-1 or +1) indicates a
-            short or long transaction made, and the second value is the price.
+            Each tuple tracks all longs or shorts made, and the price they were made at.
+            The first value (-1 or +1) indicates a short or long transaction made, 
+            and the second value is the price.
     """
 
     indicator_values = [-2, -1, 0, 1, 2]
@@ -96,7 +96,7 @@ class SimpleStock:
         self.price_history = [self.price]
         self.transaction_history = []
         self.reward_history = []
-        self.capital_gains_history = []
+        self.cashflow_history = []
     
 
     @property
@@ -146,9 +146,9 @@ class SimpleStock:
     
     def _transact_short(self, N):
         """Computes the transaction 'short' N times and
-        returns the reward given the current state.
+        returns the reward and cashflow given the current state.
         """
-        reward = 0
+        reward, cashflow = 0, 0
         self.portfolio.sort(key=lambda x: (-x[0], x[1]), reverse=True)
 
         for _ in range(N):
@@ -162,15 +162,17 @@ class SimpleStock:
             else:
                 shorted = self.portfolio.pop()
                 reward += self.price - shorted[1]
+            
+            cashflow += self.price
 
-        return reward
+        return reward, cashflow
 
     
     def _transact_long(self, N):
         """Computes the transaction 'long' N times and
-        returns the reward given the current state.
+        returns the reward and cashflow given the current state.
         """
-        reward = 0
+        reward, cashflow = 0, 0
         self.portfolio.sort(key=lambda x: (-x[0], x[1]))
 
         for _ in range(N):
@@ -184,8 +186,10 @@ class SimpleStock:
             else:
                 closed = self.portfolio.pop()
                 reward += closed[1] - self.price
+            
+            cashflow -= self.price
 
-        return reward
+        return reward, cashflow
 
 
     def _transact_hold(self):
@@ -194,20 +198,20 @@ class SimpleStock:
         """
         # with a net long position, reward increases if price appreciates
         if self.position > 0:
-            return self.price - self.price_history[-1]
+            return self.price - self.price_history[-1], 0
 
         # with a net short position, reward increases if price depreciates
         elif self.position < 0:
-            return self.price_history[-1] - self.price
+            return self.price_history[-1] - self.price, 0
         
         # holding an empty portfolio has no reward
         else:
-            return 0
+            return 0, 0
 
 
     def _process_transaction(self, transaction):
         """Apply changes to portfolio and compute rewards 
-        and capital gains resulting from making the transaction 
+        and cashflows resulting from making the transaction 
         given the current state. If a transaction is invalid
         (e.g. violates the position bounds), the a 'hold' is
         transacted.
@@ -216,27 +220,30 @@ class SimpleStock:
         Returns:
             actual_transaction: the actual transaction made.
         """
+
         if self._is_valid_transaction(transaction):
             actual_transaction = transaction
             if transaction > 0:
-                reward = self._transact_long(N=abs(transaction))
+                reward, cashflow = self._transact_long(N=abs(transaction))
             elif transaction < 0:
-                reward = self._transact_short(N=abs(transaction))
+                reward, cashflow = self._transact_short(N=abs(transaction))
             else:
-                reward = self._transact_hold()
+                reward, cashflow = self._transact_hold()
 
         else:
             # actual transaction is a 'hold'
             actual_transaction = 0
-            reward = self._transact_hold()
+            reward, cashflow = self._transact_hold()
 
         # update position
         self._compute_net_position()
 
-        # record transaction
+        # record reward, cashflow, and transaction
+        self.reward_history.append(reward)
+        self.cashflow_history.append(cashflow)
         self.transaction_history.append(actual_transaction)
 
-        return actual_transaction, reward
+        return actual_transaction, reward, cashflow
 
 
     def _close_out(self):
@@ -285,8 +292,9 @@ class SimpleStock:
                   "| Price:", self.price,
                   "| Position:", self.position)
 
-            actual_transaction, reward = self._process_transaction(strategy[day])
-            print("Transaction:", actual_transaction, "| Reward:", reward)
+            actual_transaction, reward, cashflow = self._process_transaction(strategy[day])
+            print("Transaction:", actual_transaction, "| Reward:", reward, 
+                  "| Cashflow:", cashflow)
             print("Portfolio:", self.portfolio)
 
             next_state = self._transition_states()
