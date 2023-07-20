@@ -1,0 +1,4 @@
+class TraderAgent:
+    """
+    """
+    pass

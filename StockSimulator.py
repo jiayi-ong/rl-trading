@@ -1,7 +1,9 @@
+import sys
 import pandas as pd
 import numpy as np
 import itertools as it
 import matplotlib.pyplot as plt
+from RL_Trading import TraderAgent
 
 
 
@@ -275,20 +277,24 @@ class SimpleStock:
         return (next_indicator, self.price, self.position)
 
     
-    def simulate_trading_day(self, Ndays=1, strategy=None):
+    def simulate_trading_day(self, Ndays=1, strategy=None, closeout_ending=False):
         """Simulate a number of trading days passing.
         Args:
-            Ndays (int): number of trading days (>= 1)
-            strategy (list[int]): 
+            Ndays (int): number of trading days.
+            strategy (list[int]): transaction to make on each trading day.
+            closeout_ending (bool): if True, will 
         """
         if strategy is None:
             print("No trading strategy provided, will do nothing.")
             strategy = [0] * Ndays
         elif len(strategy) != Ndays:
             print("A trading strategy must be provided for each simulated trading day.")
-        else:
+        elif isinstance(strategy, TraderAgent):
             pass
+        else:
+            sys.exit("Please provide a valid strategy.")
 
+        
         for day in range(Ndays):
             print("==========", "Simulating day", day+1, "==========")
             print("Indicator:", self.indicator_history[-1],
@@ -305,7 +311,7 @@ class SimpleStock:
 
 
     def plot_history(self):
-        """
+        """Visualize historical indicator values, prices, transactions, and cashflows.
         """
         periods = range(len(self.price_history[1:]))
         h = max(self.price_history[1:])
