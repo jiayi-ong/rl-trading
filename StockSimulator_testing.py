@@ -9,3 +9,6 @@ print("Prices:", stock.price_history)
 print("Transactions:", stock.transaction_history)
 print("Rewards:", stock.reward_history)
 print("Cashflow:", stock.cashflow_history)
+
+
+stock.plot_history()

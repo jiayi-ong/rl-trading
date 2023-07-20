@@ -307,4 +307,29 @@ class SimpleStock:
     def plot_history(self):
         """
         """
-        pass
+        periods = range(len(self.price_history[1:]))
+        h = max(self.price_history[1:])
+
+        fig, ax1 = plt.subplots()
+        ax1.set_title(f"Net CF: {sum(self.cashflow_history)}")
+
+        # price history
+        ax1.plot(self.price_history[1:], c="black", label="Price")
+
+        # transaction history
+        for t, (act,cf) in enumerate(zip(self.transaction_history, self.cashflow_history)):
+            if act < 0:
+                ax1.axvline(x=t, c="red", ls=":")
+                ax1.text(x=t+0.1, y=h-0.2, s=f"S: {act}\nCF: {cf}", fontsize=8)
+            elif act > 0:
+                ax1.axvline(x=t, c="blue", ls=":")
+                ax1.text(x=t+0.1, y=h-0.2, s=f"L: {act}\nCF: {cf}", fontsize=8)
+
+        # indicator history
+        ax2 = ax1.twinx()
+        ax2.bar(x=periods, height=self.indicator_history[1:], alpha=0.6)
+        ax2.set_ylim(min(self.indicator_values)-2, h//2)
+        ax2.set(ylabel=None)
+        ax2.axhline(y=0)
+
+        plt.show()
