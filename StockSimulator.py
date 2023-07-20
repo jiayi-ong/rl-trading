@@ -165,6 +165,9 @@ class SimpleStock:
             
             cashflow += self.price
 
+            # update position
+            self._compute_net_position()
+
         return reward, cashflow
 
     
@@ -188,6 +191,9 @@ class SimpleStock:
                 reward += closed[1] - self.price
             
             cashflow -= self.price
+
+            # update position
+            self._compute_net_position()
 
         return reward, cashflow
 
@@ -235,9 +241,6 @@ class SimpleStock:
             actual_transaction = 0
             reward, cashflow = self._transact_hold()
 
-        # update position
-        self._compute_net_position()
-
         # record reward, cashflow, and transaction
         self.reward_history.append(reward)
         self.cashflow_history.append(cashflow)
@@ -284,7 +287,7 @@ class SimpleStock:
         elif len(strategy) != Ndays:
             print("A trading strategy must be provided for each simulated trading day.")
         else:
-            print(f"Simulating {Ndays} trading days...")
+            pass
 
         for day in range(Ndays):
             print("==========", "Simulating day", day+1, "==========")
@@ -299,3 +302,9 @@ class SimpleStock:
 
             next_state = self._transition_states()
             print("Growth:", self.growth_history[-1])
+
+
+    def plot_history(self):
+        """
+        """
+        pass
