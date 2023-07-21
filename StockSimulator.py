@@ -101,6 +101,7 @@ class SimpleStock:
         self.cashflow_history = []
     
 
+    
     @property
     def price(self):
         return self.__price
@@ -118,6 +119,7 @@ class SimpleStock:
             self.__price = value
 
 
+
     def _compute_net_position(self):
         """Computes the net position of the current
         portfolio. E.g. if there are three shorted stocks,
@@ -131,6 +133,7 @@ class SimpleStock:
         self.position = position
 
     
+
     def _is_valid_transaction(self, transaction):
         """Checks if position bounds are violated.
         Args:
@@ -144,6 +147,7 @@ class SimpleStock:
             return False
         else:
             return True
+
 
     
     def _transact_short(self, N):
@@ -173,6 +177,7 @@ class SimpleStock:
         return reward, cashflow
 
     
+
     def _transact_long(self, N):
         """Computes the transaction 'long' N times and
         returns the reward and cashflow given the current state.
@@ -200,6 +205,7 @@ class SimpleStock:
         return reward, cashflow
 
 
+
     def _transact_hold(self):
         """Computes the transaction 'hold' and
         returns the reward given the current state.
@@ -215,6 +221,7 @@ class SimpleStock:
         # holding an empty portfolio has no reward
         else:
             return 0, 0
+
 
 
     def _process_transaction(self, transaction):
@@ -251,12 +258,14 @@ class SimpleStock:
         return actual_transaction, reward, cashflow
 
 
+
     def _close_out(self):
         """Close out on current position by liquidating portfolio.
         """
         pass
 
     
+
     def _transition_states(self):
         """Computes next-period indicator values and stock price.
         """
@@ -277,6 +286,7 @@ class SimpleStock:
         return (next_indicator, self.price, self.position)
 
     
+
     def simulate_trading_day(self, Ndays=1, strategy=None, closeout_ending=False):
         """Simulate a number of trading days passing.
         Args:
@@ -308,6 +318,7 @@ class SimpleStock:
 
             next_state = self._transition_states()
             print("Growth:", self.growth_history[-1])
+
 
 
     def plot_history(self):
