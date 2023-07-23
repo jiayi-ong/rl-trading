@@ -287,29 +287,17 @@ class SimpleStock:
 
     
 
-    def simulate_trading_day(self, Ndays=1, strategy=None, print_out=False):
+    def simulate_trading_day(self, Ndays=1, trader=None, print_out=False):
         """Simulate a number of trading days passing.
         Args:
             Ndays (int): number of trading days.
-            strategy (list[int]): transaction to make on each trading day.
-                if a TraderAgent instance is given as a strategy, it will simulate a minimum
-                of Ndays number of trading days, and continue until position is 0.
+            trader (TraderAgent): a TraderAgent instance that decides the transaction
+                for each trading day.
         """
-        trade_till_position_0 = False
-
-        if strategy is None:
-            print("No trading strategy provided, will do nothing.")
-            strategy = [0] * Ndays
-
-        elif len(strategy) != Ndays:
-            sys.exit("A trading strategy must be provided for each simulated trading day.")
-
-        elif isinstance(strategy, TraderAgent):
-            trade_till_position_0 = True
-
-        else:
-            sys.exit("Please provide a valid strategy.")
-
+        if not isinstance(trader, TraderAgent):
+            sys.exit("Please provide a valid TraderAgent instance.")
+        
+        trade_till_position_0 = trader.trade_till_position_0
         day = 0
 
         while day < Ndays or trade_till_position_0 * (self.position != 0):
