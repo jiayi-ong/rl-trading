@@ -101,7 +101,7 @@ class SimpleStock:
         self.cashflow_history = []
     
 
-    
+
     @property
     def price(self):
         return self.__price
@@ -287,37 +287,50 @@ class SimpleStock:
 
     
 
-    def simulate_trading_day(self, Ndays=1, strategy=None, closeout_ending=False):
+    def simulate_trading_day(self, Ndays=1, strategy=None, print_out=False):
         """Simulate a number of trading days passing.
         Args:
             Ndays (int): number of trading days.
             strategy (list[int]): transaction to make on each trading day.
-            closeout_ending (bool): if True, will 
+                if a TraderAgent instance is given as a strategy, it will simulate a minimum
+                of Ndays number of trading days, and continue until position is 0.
         """
+        trade_till_position_0 = False
+
         if strategy is None:
             print("No trading strategy provided, will do nothing.")
             strategy = [0] * Ndays
+
         elif len(strategy) != Ndays:
-            print("A trading strategy must be provided for each simulated trading day.")
+            sys.exit("A trading strategy must be provided for each simulated trading day.")
+
         elif isinstance(strategy, TraderAgent):
-            pass
+            trade_till_position_0 = True
+
         else:
             sys.exit("Please provide a valid strategy.")
 
-        
-        for day in range(Ndays):
-            print("==========", "Simulating day", day+1, "==========")
-            print("Indicator:", self.indicator_history[-1],
-                  "| Price:", self.price,
-                  "| Position:", self.position)
+        day = 0
+
+        while day < Ndays or trade_till_position_0 * (self.position != 0):
 
             actual_transaction, reward, cashflow = self._process_transaction(strategy[day])
-            print("Transaction:", actual_transaction, "| Reward:", reward, 
-                  "| Cashflow:", cashflow)
-            print("Portfolio:", self.portfolio)
 
             next_state = self._transition_states()
-            print("Growth:", self.growth_history[-1])
+
+            if print_out:
+                print("==========", "Simulating day", day+1, "==========")
+                print("Indicator:", self.indicator_history[-1],
+                    "| Price:", self.price,
+                    "| Position:", self.position)
+                
+                print("Transaction:", actual_transaction, "| Reward:", reward, 
+                    "| Cashflow:", cashflow)
+                print("Portfolio:", self.portfolio)
+                print("Growth:", self.growth_history[-1])
+            
+            day += 1
+
 
 
 
