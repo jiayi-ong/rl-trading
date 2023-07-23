@@ -6,15 +6,56 @@ class TraderAgent:
     """
     """
 
-    def __init__(self, stock, trader_algorithm):
+    def __init__(self, stock):
         """
         Args:
             stock (SimpleStock):
+                the class name SimpleStock
+        """
+        self.stock = stock
+        self.trade_till_position_0 = False
+    
 
-            trader_algorithm (str):
-                either 'random' or 'Q-learning'
+    def make_transaction(self):
+        """
+        """
+        raise NotImplementedError()
+    
+
+    def learn_from_reward(self):
+        """
+        """
+        raise NotImplementedError()
+    
+
+
+
+class TraderAgent_Random(TraderAgent):
+    """
+    """
+
+    def make_transaction(self):
+        """
+        """
+        return np.random.choice(self.stock.transactions)
+    
+
+    def learn_from_reward(self, reward, next_state):
+        """
         """
         pass
+
+
+
+
+class TraderAgent_QLearning(TraderAgent):
+    """
+    """
+
+    def __init__(self):
+        """
+        """
+        self.Q_HAT = np.zeros(shape=(len(self.stock.states), len(self.stock.transactions)))
 
     
     @staticmethod

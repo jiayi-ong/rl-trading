@@ -301,10 +301,12 @@ class SimpleStock:
         day = 0
 
         while day < Ndays or trade_till_position_0 * (self.position != 0):
-
-            actual_transaction, reward, cashflow = self._process_transaction(strategy[day])
-
+            
+            transaction = trader.make_transaction()
+            actual_transaction, reward, cashflow = self._process_transaction(transaction)
             next_state = self._transition_states()
+
+            trader.learn_from_reward(reward, next_state)
 
             if print_out:
                 print("==========", "Simulating day", day+1, "==========")

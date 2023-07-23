@@ -1,9 +1,13 @@
 from StockSimulator import *
+from RL_Trading import TraderAgent_Random
+
+
+
 
 stock = SimpleStock()
-N = 10
-rand_strats = np.random.choice([-1,0,1], replace=True, size=N)
-stock.simulate_trading_day(Ndays=N, strategy=rand_strats)
+trader = TraderAgent_Random(stock)
+
+stock.simulate_trading_day(Ndays=14, trader=trader, print_out=False)
 
 print("Prices:", stock.price_history)
 print("Transactions:", stock.transaction_history)
