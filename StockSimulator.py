@@ -84,12 +84,16 @@ class SimpleStock:
     transaction_cost = 0
     
     
-    def __init__(self, initial_indicator=0, initial_price=50):
+    def __init__(self, initial_indicator=0, initial_price=50, random_init=False):
         """Instantiates a SimpleStock.
         Args:
             initial_indicator (int): starting value of the stock's indicator
             initial_price (int): starting value of the stock's price
         """
+        if random_init:
+            initial_indicator = np.random.choice(self.indicator_values)
+            initial_price = np.random.choice(np.arange(45,55+1))
+
         self.portfolio = []
         self.position = 0
         self.indicator_history = [initial_indicator]
@@ -301,12 +305,13 @@ class SimpleStock:
         day = 0
 
         while day < Ndays or trade_till_position_0 * (self.position != 0):
-            
-            transaction = trader.make_transaction()
+
+            current_state = (self.indicator_history[-1], self.price, self.position)
+            transaction = trader.make_transaction(current_state)
             actual_transaction, reward, cashflow = self._process_transaction(transaction)
             next_state = self._transition_states()
 
-            trader.learn_from_reward(reward, next_state)
+            trader.learn_from_reward(actual_transaction, reward, current_state, next_state)
 
             if print_out:
                 print("==========", "Simulating day", day+1, "==========")
@@ -330,7 +335,7 @@ class SimpleStock:
         periods = range(len(self.price_history[1:]))
         h = max(self.price_history[1:])
 
-        fig, ax1 = plt.subplots()
+        fig, ax1 = plt.subplots(figsize=(15,10))
         ax1.set_title(f"Net CF: {sum(self.cashflow_history)}")
 
         # price history

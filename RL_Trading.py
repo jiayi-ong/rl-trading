@@ -34,13 +34,13 @@ class TraderAgent_Random(TraderAgent):
     """
     """
 
-    def make_transaction(self):
+    def make_transaction(self, current_state):
         """
         """
         return np.random.choice(self.stock.transactions)
     
 
-    def learn_from_reward(self, reward, next_state):
+    def learn_from_reward(self, transaction, reward, current_state, next_state):
         """
         """
         pass
@@ -52,10 +52,18 @@ class TraderAgent_QLearning(TraderAgent):
     """
     """
 
-    def __init__(self):
+    def __init__(self, stock, gamma, alpha):
         """
         """
-        self.Q_HAT = np.zeros(shape=(len(self.stock.states), len(self.stock.transactions)))
+        super().__init__(stock)
+        self.gamma = gamma
+        self.alpha = alpha
+        self.trade_till_position_0 = True
+        self.Q_HAT = np.zeros(shape=(len(stock.states), len(stock.transactions)))
+        self.i_to_state = {i:j for i,j in enumerate(stock.states)}
+        self.state_to_i = {j:i for i,j in enumerate(stock.states)}
+        self.i_to_action = {i:j for i,j in enumerate(stock.transactions)}
+        self.action_to_i = {j:i for i,j in enumerate(stock.transactions)}
 
     
     @staticmethod
@@ -72,3 +80,26 @@ class TraderAgent_QLearning(TraderAgent):
         output = z / np.sum(z)
 
         return output
+    
+
+    def make_transaction(self, current_state):
+        """
+        """
+        Q_row = self.Q_HAT[self.state_to_i[current_state]]
+        
+        if all(Q_row == 0):
+            transaction = np.random.choice(self.stock.transactions)
+        else:
+            # choosing action using softmax policy
+            probs = self.stable_softmax(Q_row)
+            transaction = np.random.choice(self.stock.transactions, p=probs)
+
+        return transaction
+    
+
+    def learn_from_reward(self, transaction, reward, current_state, next_state):
+        """
+        """
+        new_value = reward + self.gamma * np.max(self.Q_HAT[self.state_to_i[next_state]])
+        j, k = self.state_to_i[current_state], self.action_to_i[transaction]
+        self.Q_HAT[j, k] += self.alpha * (new_value - self.Q_HAT[j, k])
