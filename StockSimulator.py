@@ -80,11 +80,9 @@ class SimpleStock:
                         range(position_bounds[0], position_bounds[1]+1)))
     
     transactions = list(range(-position_bounds[1], position_bounds[1]+1))
-
-    transaction_cost = 0
     
     
-    def __init__(self, initial_indicator=0, initial_price=50, random_init=False):
+    def __init__(self, initial_indicator=0, initial_price=50, transaction_cost=0, random_init=False):
         """Instantiates a SimpleStock.
         Args:
             initial_indicator (int): starting value of the stock's indicator
@@ -94,6 +92,7 @@ class SimpleStock:
             initial_indicator = np.random.choice(self.indicator_values)
             initial_price = np.random.choice(np.arange(45,55+1))
 
+        self.transaction_cost = transaction_cost
         self.portfolio = []
         self.position = 0
         self.indicator_history = [initial_indicator]
@@ -173,7 +172,8 @@ class SimpleStock:
                 shorted = self.portfolio.pop()
                 reward += self.price - shorted[1]
             
-            cashflow += self.price
+            reward -= self.transaction_cost * N
+            cashflow += self.price - self.transaction_cost * N
 
             # update position
             self._compute_net_position()
@@ -201,7 +201,8 @@ class SimpleStock:
                 closed = self.portfolio.pop()
                 reward += closed[1] - self.price
             
-            cashflow -= self.price
+            reward -= self.transaction_cost * N
+            cashflow -= self.price + self.transaction_cost * N
 
             # update position
             self._compute_net_position()
