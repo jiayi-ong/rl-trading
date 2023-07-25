@@ -95,6 +95,7 @@ class SimpleStock:
         self.transaction_cost = transaction_cost
         self.portfolio = []
         self.position = 0
+        self.position_history = []
         self.indicator_history = [initial_indicator]
         self.growth_history = []
         self.price = initial_price
@@ -255,10 +256,11 @@ class SimpleStock:
             actual_transaction = 0
             reward, cashflow = self._transact_hold()
 
-        # record reward, cashflow, and transaction
+        # record reward, cashflow, transaction, and position
         self.reward_history.append(reward)
         self.cashflow_history.append(cashflow)
         self.transaction_history.append(actual_transaction)
+        self.position_history.append(self.position)
 
         return actual_transaction, reward, cashflow
 
@@ -336,20 +338,24 @@ class SimpleStock:
         periods = range(len(self.price_history[1:]))
         h = max(self.price_history[1:])
 
-        fig, ax1 = plt.subplots(figsize=(15,10))
+        fig, ax1 = plt.subplots(figsize=(18,10))
         ax1.set_title(f"Net CF: {sum(self.cashflow_history)}")
 
         # price history
         ax1.plot(self.price_history[1:], c="black", label="Price")
 
         # transaction history
-        for t, (act,cf) in enumerate(zip(self.transaction_history, self.cashflow_history)):
+        for t, (act,cf,rw,ps) in enumerate(zip(self.transaction_history, self.cashflow_history, 
+                                            self.reward_history, self.position_history)):
             if act < 0:
-                ax1.axvline(x=t, c="red", ls=":")
-                ax1.text(x=t+0.1, y=h-0.2, s=f"S: {act}\nCF: {cf}", fontsize=8)
-            elif act > 0:
                 ax1.axvline(x=t, c="blue", ls=":")
-                ax1.text(x=t+0.1, y=h-0.2, s=f"L: {act}\nCF: {cf}", fontsize=8)
+                ax1.text(x=t+0.1, y=h-0.2, s=f"S: {act}\nCF: {cf}\nRW: {rw}\nPos: {ps}", fontsize=8)
+            elif act > 0:
+                ax1.axvline(x=t, c="red", ls=":")
+                ax1.text(x=t+0.1, y=h-0.2, s=f"L: {act}\nCF: {cf}\nRW: {rw}\nPos: {ps}", fontsize=8)
+            else:
+                ax1.axvline(x=t, c="black", ls=":")
+                ax1.text(x=t+0.1, y=h-0.2, s=f"H: {act}\nCF: {cf}\nRW: {rw}\nPos: {ps}", fontsize=8)
 
         # indicator history
         ax2 = ax1.twinx()
