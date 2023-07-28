@@ -1,5 +1,6 @@
 import unittest
 from StockSimulator import SimpleStock
+from RL_Trading import TraderAgent_Random
 
 
 class Tests(unittest.TestCase):
