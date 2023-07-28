@@ -1,8 +1,9 @@
+from abc import ABC, abstractmethod
 import numpy as np
 
 
 
-class TraderAgent:
+class TraderAgent(ABC):
     """
     """
 
@@ -16,13 +17,15 @@ class TraderAgent:
         self.trade_till_position_0 = False
     
 
-    def make_transaction(self):
+    @abstractmethod
+    def make_transaction(self, **kwargs):
         """
         """
         raise NotImplementedError()
     
 
-    def learn_from_reward(self):
+    @abstractmethod
+    def learn_from_reward(self, **kwargs):
         """
         """
         raise NotImplementedError()
@@ -34,14 +37,14 @@ class TraderAgent_Random(TraderAgent):
     """
     """
 
-    def make_transaction(self, current_state):
+    def make_transaction(self, **kwargs):
         """
         """
         return np.random.choice(self.stock.transactions)
     
 
-    def learn_from_reward(self, transaction, reward, current_state, next_state):
-        """
+    def learn_from_reward(self, **kwargs):
+        """Random trader does not learn from rewards.
         """
         pass
 
