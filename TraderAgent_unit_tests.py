@@ -31,6 +31,7 @@ class DummyStock:
         Args:
             iterations (int): number of iterations.
         """
+        
 
 
     def simulate_trading_day(self, trader, iterations):
@@ -38,7 +39,7 @@ class DummyStock:
         Args:
             iterations (int): number of iterations.
         """
-
+        raise NotImplementedError()
 
 
 
