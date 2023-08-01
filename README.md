@@ -1,7 +1,7 @@
-# HEADER
+# Trading Stocks with Reinforcement-Learning
 
-Words.
+Examines the feasibility of automating stock trading decisions using RL in a simulated setting.
 
-## SUBHEADER
+## Simulation
 
-More words.
+A simple stock that can take a range of prices that fluctuates based on an observable indicator.
