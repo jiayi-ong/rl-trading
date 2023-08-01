@@ -21,7 +21,7 @@ class DummyStock:
                          [0.8, 0.2]]
     
 
-    def __init__(self, initial_state=()):
+    def __init__(self, initial_state):
         self.state = initial_state
         self.transaction_history = []
 
@@ -31,7 +31,11 @@ class DummyStock:
         Args:
             iterations (int): number of iterations.
         """
-        
+        transaction = trader.make_transaction()
+        probs = self.transition_matrix[self.state]
+        actual_transaction = np.random.choice(self.state)
+        reward = 0
+        trader.learn_from_reward(transaction, reward, current_state, next_state)
 
 
     def simulate_trading_day(self, trader, iterations):
