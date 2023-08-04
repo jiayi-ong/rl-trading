@@ -15,7 +15,8 @@ class SimpleStock:
     predicts the growth of the stock's next-period price. The indicator's value 
     over time is governed by a transition matrix. The stock's observable state comprises 
     the stock's current price, the stock's indicator value, and the trader's
-    position in the stock (how many stocks owned).
+    position in the stock (how many stocks owned). No hedging positions are allowed,
+    i.e. no concurrent long and short positions.
 
     Attributes:
         indicator_values (list): 
@@ -162,13 +163,16 @@ class SimpleStock:
         self.portfolio.sort(key=lambda x: (-x[0], x[1]), reverse=True)
 
         for _ in range(N):
-
+            
+            # if there is a net short position, would add more shorted shares
+            # no immediate reward from shorting more shares
             if self.position <= 0:
                 self.portfolio.append((-1, self.price))
-                reward += self.price
+                # reward += self.price
 
             # if there is a net long position, longed shares
             # would be sold in ascending order of price bought (sell cheapest first)
+            # reward equals to the capital gains minus transaction costs
             else:
                 shorted = self.portfolio.pop()
                 reward += self.price - shorted[1]
@@ -192,12 +196,15 @@ class SimpleStock:
 
         for _ in range(N):
 
+            # if there is a net long position, would add more longed shares
+            # no immediate reward for longing more shares
             if self.position >= 0:
                 self.portfolio.append((1, self.price))
-                reward -= self.price
+                # reward -= self.price
 
             # if there is a net short position, shorted shares
             # would be closed in descending order of price shorted (close most expensive first)
+            # reward equals to the capital gains minus transaction costs
             else:
                 closed = self.portfolio.pop()
                 reward += closed[1] - self.price
