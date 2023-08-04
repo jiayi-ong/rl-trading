@@ -223,17 +223,14 @@ class SimpleStock:
         """Computes the transaction 'hold' and
         returns the reward given the current state.
         """
-        # with a net long position, reward increases if price appreciates
-        if self.position > 0:
-            return self.price - self.price_history[-1], 0
+        reward, cashflow = 0, 0
 
+        # with a net long position, reward increases if price appreciates
         # with a net short position, reward increases if price depreciates
-        elif self.position < 0:
-            return self.price_history[-1] - self.price, 0
-        
-        # holding an empty portfolio has no reward
-        else:
-            return 0, 0
+        # holding with empty portfolio has no reward
+        reward += (self.price - self.price_history[-1]) * self.position
+
+        return reward, cashflow
 
 
 
