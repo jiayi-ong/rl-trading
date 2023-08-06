@@ -18,14 +18,14 @@ class TraderAgent(ABC):
     
 
     @abstractmethod
-    def make_transaction(self, **kwargs):
+    def make_transaction(self, *args):
         """
         """
         raise NotImplementedError()
     
 
     @abstractmethod
-    def learn_from_reward(self, **kwargs):
+    def learn_from_reward(self, *args):
         """
         """
         raise NotImplementedError()
@@ -37,13 +37,13 @@ class TraderAgent_Random(TraderAgent):
     """
     """
 
-    def make_transaction(self, **kwargs):
+    def make_transaction(self, *args):
         """
         """
         return np.random.choice(self.stock.transactions)
     
 
-    def learn_from_reward(self, **kwargs):
+    def learn_from_reward(self, *args):
         """Random trader does not learn from rewards.
         """
         pass
